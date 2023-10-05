@@ -17,7 +17,6 @@
 </style>
   <script>
     window.onload = function() {
-      // Paste the code snippet here
       const bgImages = [
         'lib/imgs/image1.jpg',
         'lib/imgs/image2.png',
