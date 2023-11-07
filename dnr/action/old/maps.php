@@ -283,29 +283,29 @@
                 const orgs = responseData.orgs;
                 const donor = responseData.donor;
 
-                const donorAddress = donor.client_address;
+                const donorAddress = donor.donor_address;
                 const donorLocation = await geocodeAddress(donorAddress);
 
                 for (const org of orgs) {
-                    if (org.client_lat !== null && org.client_lng !== null) {
+                    if (org.org_lat !== null && org.org_lng !== null) {
                         // Calculate distance between donor and organization
                         const distance = calculateDistance(
                             donorLocation.lat,
                             donorLocation.lon,
-                            parseFloat(org.client_lat),
-                            parseFloat(org.client_lng)
+                            parseFloat(org.org_lat),
+                            parseFloat(org.org_lng)
                         );
 
                         createMarker(
-                            parseFloat(org.client_lat),
-                            parseFloat(org.client_lng),
-                            org.client_name,
-                            org.client_address,
+                            parseFloat(org.org_lat),
+                            parseFloat(org.org_lng),
+                            org.org_name,
+                            org.org_address,
                             distance,
                             '#FF3535'
                         );
                     } else {
-                        const address = org.client_address;
+                        const address = org.org_address;
                         if (address) {
                             try {
                                 const { lat, lon } = await geocodeAddress(address);
@@ -317,7 +317,7 @@
                                     lon
                                 );
 
-                                createMarker(lat, lon, org.client_name, address, distance, '#FF3535');
+                                createMarker(lat, lon, org.org_name, address, distance, '#FF3535');
                             } catch (error) {
                                 console.error('Geocoding error:', error);
                             }
@@ -340,8 +340,8 @@
                     .catch(function (error) {
                         console.error(error);
                     });
-                if (donor.client_lat !== null && donor.client_lng !== null) {
-                    createMarker(parseFloat(donor.client_lat), parseFloat(donor.client_lng), 'Your Address', donorAddress, '#24D4FF');
+                if (donor.donor_lat !== null && donor.donor_lng !== null) {
+                    createMarker(parseFloat(donor.donor_lat), parseFloat(donor.donor_lng), 'Your Address', donorAddress, '#24D4FF');
                 } else {
                     try {
                         const { lat, lon } = await geocodeAddress(donorAddress);

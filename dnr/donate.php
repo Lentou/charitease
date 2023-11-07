@@ -129,44 +129,43 @@
           // Connect to database
           include '../lib/database.php';
 
-		      $db = new Database('charitease');
+		      $db = new Database();
 		      $conn = $db->connect();
           $donor_id = $_SESSION['id'];
   
-          // Select all organizations from table
-          $sql = "SELECT * FROM tblorgs WHERE is_approved = '1'";
-          $result = mysqli_query($conn, $sql);
+          $getOrgText = "SELECT c.* FROM tblclients c JOIN tblusers u ON c.client_id = u.user_id WHERE u.account_type = 'c' AND c.is_approved = '1'";
+          //$sql = "SELECT * FROM tblorgs WHERE is_approved = '1'";
+          //$result = mysqli_query($conn, $sql);
+          $result = $db->query($getOrgText);
   
-          // Loop through organizations and create a card for each one
           while ($row = $result->fetch_assoc()) {
-            $org_id = $row['org_id'];
-            $org_name = $row['org_name'];
-            $org_person_name = $row['org_person_name'];
-            $org_phone = $row['org_phone'];
-            $org_address = $row['org_address'];
-            $org_description = $row['org_description'];
-            $is_approved = $row['is_approved'];
+            $org_id = $row['client_id'];
+            $org_name = $row['client_name'];
+            $org_person_name = $row['client_contact_name'];
+            $org_phone = $row['client_phone'];
+            $org_address = $row['client_address'];
+            $org_description = $row['client_bio'];
             $date_founded = $row['date_founded'];
-            $date_approved = $row['date_approved'];
 
-            $notifQuery = "SELECT COUNT(*) AS notifCount FROM `tblconvo` WHERE is_read = 0 AND initiate_by = 'charity' AND org_id = '$org_id' AND donor_id = '$donor_id'";
+            /*
+            $notifQuery = "SELECT COUNT(*) AS notifCount FROM `tblchats` WHERE is_read = 0 AND initiate_by = 'charity' AND sender_id = '$org_id' AND receiver_id = '$donor_id'";
             $notifStmt = mysqli_query($conn, $notifQuery);
             $notifRow = mysqli_fetch_assoc($notifStmt);
-            $notifCount = $notifRow['notifCount'];
+            $notifCount = $notifRow['notifCount'];*/
 
-            $org_type = $row['org_type'];
+            $org_type = $row['client_org_type'];
             $color_tag = match($org_type) {
-              "environment" => "is-success",
-              "health" => "is-danger",
-              "religious" => "is-warning",
-              "education" => "is-info"
+              "en" => "is-success",
+              "he" => "is-danger",
+              "re" => "is-warning",
+              "ed" => "is-info"
             };
 
             $type_tag = match($org_type) {
-              "environment" => "Environment Charity",
-              "health" => "Health Charity",
-              "religious" => "Religious Charity",
-              "education" => "Education Charity"
+              "en" => "Environment Charity",
+              "he" => "Health Charity",
+              "re" => "Religious Charity",
+              "ed" => "Education Charity"
             };
         ?>
 
@@ -177,7 +176,7 @@
                 <div class="media-left">
                   <figure class="image is-48x48">
                     <?php
-                    $get_pic = $db->query("SELECT * FROM `tblimages` WHERE table_id = '$org_id' AND category = 'org_icon' AND permit_type = 'icon'");
+                    $get_pic = $db->query("SELECT * FROM `tblimages` WHERE client_id = '$org_id' AND category = 'icon'");
                       if ($get_pic->num_rows > 0) {
                         $gett = $get_pic->fetch_assoc();
                         $imageData = $gett['image_data'];
@@ -186,29 +185,30 @@
                     <?php 
                       } else {
                     ?>
-                      <img src="https://bulma.io/images/placeholders/96x96.png" alt="<?php echo $org_name . ' logo';?>">
+                      <img src="https://bulma.io/images/placeholders/96x96.png" alt="<?= $org_name . ' logo';?>">
                     <?php 
                       }
                     ?>
                   </figure>
                 </div>
                 <div class="media-content">
-                  <span class="tag <?php echo $color_tag; ?>"><?php echo $type_tag; ?></span> 
-                  <p class="title is-5"><?php echo $org_name; ?></p>
-                  <p class="subtitle is-6"><?php echo $org_address; ?></p>
+                  <span class="tag <?= $color_tag; ?>"><?= $type_tag; ?></span> 
+                  <p class="title is-5"><?= $org_name; ?></p>
+                  <p class="subtitle is-6"><?= $org_address; ?></p>
                 </div>
               </div>
               <div class="content">
                 <div class="buttons">
-                  <a href="timeline.php?oid=<?php echo $org_id; ?>" class="button is-small is-link">View Timeline</a>
-                  <a href="messenger.php?oid=<?php echo $org_id; ?>" class="button is-small is-link">
-                    <?php if ($notifCount > 0) { ?>
-                      Direct Message&nbsp;<span class="tag is-danger"><?php echo $notifCount; ?></span>
-                    <?php } else { ?>
+                  <a href="timeline.php?oid=<?= $org_id; ?>" class="button is-small is-link">View Timeline</a>
+                  <!--
+                  <a href="messenger.php?oid=<?= $org_id; ?>" class="button is-small is-link">
+                    <?php //if ($notifCount > 0) { ?>
+                      Direct Message&nbsp;<span class="tag is-danger"><?php //echo $notifCount; ?></span>
+                    <?php //} else { ?>
                       Direct Message
-                    <?php } ?>
-                  </a>
-                  <a href="rating.php?oid=<?php echo $org_id; ?>" class="button is-small is-link">View Reviews</a>
+                    <?php //} ?>
+                  </a>-->
+                  <a href="rating.php?oid=<?= $org_id; ?>" class="button is-small is-link">View Reviews</a>
                 </div>
                 
               </div>

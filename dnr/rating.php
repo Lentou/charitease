@@ -1,3 +1,9 @@
+<?php if (!isset($_SESSION)) session_start(); 
+
+include '../lib/config.php';
+include '../lib/database.php';
+
+?>
 <!DOCTYPE html>
 <html>
 <head>
@@ -17,6 +23,16 @@
     body {
       font-family: 'Red Hat Display', sans-serif;
     }
+    .star {
+      font-size: 2rem;
+      cursor: pointer;
+    }
+    .star:hover {
+      color: gold;
+    }
+    .star.selected {
+      color: gold;
+    }
   </style>
 
 
@@ -24,10 +40,8 @@
 
 <body>
   <?php
-    session_start();
     if (!isset($_SESSION['user']) && ($_SESSION['user'] != 'donor')) {
-      header('Location: ../reg/login.php');
-      exit;
+      location('../reg/login.php');
     }
   ?>
 
@@ -106,15 +120,11 @@
   </nav>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // Get all "navbar-burger" elements
       const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
-      // Add a click event on each of them
       $navbarBurgers.forEach( el => {
           el.addEventListener('click', () => {
-            // Get the target from the "data-target" attribute
             const target = el.dataset.target;
             const $target = document.getElementById(target);
-            // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
             el.classList.toggle('is-active');
             $target.classList.toggle('is-active');
           });
@@ -123,95 +133,87 @@
   </script>
 
   <?php
-    include '../lib/database.php';
 
-    $db = new Database('charitease');
-		$conn = $db->connect();
+    $db = new Database();
 
     $id = $_SESSION['id'];
     $user = $_SESSION['user'];
 
     $org_id = $_GET['oid'];
 
-    $getOrgText = "SELECT * FROM `tblorgs` WHERE org_id = $org_id";
-		$resultOrg = mysqli_query($conn, $getOrgText);
+    $getOrgText = "SELECT c.* FROM tblclients c JOIN tblusers u ON c.client_id = u.user_id WHERE c.client_id = '$org_id' AND u.account_type = 'c'";
+    $resultOrg = $db->query($getOrgText);
 
-		if (mysqli_num_rows($resultOrg) > 0) {
-			$org = mysqli_fetch_assoc($resultOrg);
-		}
+    if ($resultOrg->num_rows > 0) {
+      $org = $resultOrg->fetch_assoc();
+    }
 
     if ($_SERVER["REQUEST_METHOD"] === "POST") {
-      if (isset($_POST["reviewSubmit"])) {
-        if (isset($_POST['selectedStars'], $_POST['reviewText'])) {
-
-          $stars = $_POST['selectedStars'];
-          $review = $_POST['reviewText'];
+      if (isset($_POST["review_submit"])) {
+        if (isset($_POST["stars"], $_POST["review"])) {
+          $stars = $_POST["stars"];
+          $review = $_POST["review"];
           $timestamp = date('Y-m-d H:i:s');
 
-          $reviewText = "INSERT INTO `tbldonorrating` 
-            (donor_id, org_id, rating, review, timestamp) VALUES
-            ('$id', '$org_id', '$stars', '$review', '$timestamp')";
+          $reviewText = "INSERT INTO `tblratings` (
+            donor_id,
+            org_id,
+            rating,
+            review,
+            timestamp
+          ) VALUES (
+            '$id',
+            '$org_id',
+            '$stars',
+            '$review',
+            '$timestamp'
+          )";
 
-          $result = mysqli_query($conn, $reviewText);
-          if ($result) {
-            $_SESSION["status"] = "Rating Success";
-            $_SESSION["status_text"] = "Rating and Review Send Successfully!";
-            $_SESSION["status_code"] = "success";
-            header("Location: rating.php?oid=$org_id");
-            die();
-          } else {
-            $_SESSION["status"] = "Rating Failed";
-            $_SESSION["status_text"] = "Rating and Review Send Failed!";
-            $_SESSION["status_code"] = "error";
-            header("Location: rating.php?oid=$org_id");
-            die();
-          }
+          $resulte = $db->query($reviewText);
+          
+          $status = ($resulte) ? "success" : "error";
+          $status_text = ($resulte) ? "Rating and Review Send Successfully!" : "Rating and Review Send Failed";
+          $_SESSION["status"] = "Rating " . $status;
+          $_SESSION["status_text"] = $status_text;
+          $_SESSION["status_code"] = $status;
+          location("rating.php?oid=$org_id");
         }
       }
 
-      if (isset($_POST["reviewEditSubmit"])) {
-        if (isset($_POST['selectedStars'], $_POST['reviewText'])) {
+      if (isset($_POST["review_edit"])) {
+        if (isset($_POST["stars"], $_POST["review"])) {
+          $stars = $_POST["stars"];
+          $review = $_POST["review"];
 
-          $editedStars = $_POST['selectedStars'];
-          $editedReview = $_POST['reviewText'];
-          
-          $updatedText = "UPDATE `tbldonorrating` SET 
-            rating = '$editedStars', 
-            review = '$editedReview' 
+          $updatedText = "UPDATE `tblratings` SET 
+            rating = '$stars',
+            review = '$review'
             WHERE donor_id = '$id' AND org_id = '$org_id'";
           
-          $updateResult = mysqli_query($conn, $updatedText);
+          $updateResult = $db->query($updatedText);
 
-          if ($updateResult) {
-            $_SESSION['status'] = 'Edit Review Success';
-            $_SESSION['status_text'] = 'Successfully edited the review!';
-            $_SESSION['status_code'] = 'success';
-            header("Location: rating.php?oid=$org_id");
-            die();
-          } else {
-            $_SESSION['status'] = 'Edit Review Failed';
-            $_SESSION['status_text'] = 'Error editing the review: ' . mysqli_error($conn);
-            $_SESSION['status_code'] = 'error';
-            header("Location: rating.php?oid=$org_id");
-            die();
-          }
+          $status = ($updateResult) ? "success" : "error";
+          $status_text = ($updateResult) ? "Successfully edited the review!" : "Error editing the review";
+          $_SESSION["status"] = "Rating " . $status;
+          $_SESSION["status_text"] = $status_text;
+          $_SESSION["status_code"] = $status;
+          location("rating.php?oid=$org_id");
         }
       }
 
-      if (isset($_POST["donateSubmit"])) {
-        header("Location: timeline.php?oid=$org_id");
-        die();
+      if (isset($_POST["donate_submit"])) {
+        location("timeline.php?oid=$org_id");
       }
 
     }
 
-    $ratedover = $db->query("SELECT ROUND(AVG(rating), 1) AS overall FROM `tbldonorrating` WHERE org_id = $org_id");
+    $ratedover = $db->query("SELECT ROUND(AVG(rating), 1) AS overall FROM `tblratings` WHERE org_id = $org_id");
     if ($ratedover) {
       $overall = mysqli_fetch_assoc($ratedover);
       $overall_rating = $overall['overall'];
 
-      $starIcon = '<i class="fa fa-star"></i>';
-      $emptyStarIcon = '<i class="fa fa-star-o"></i>';
+      $starIcon = '<span class="material-symbols-outlined" style="color:gold;">star</span>';
+      $emptyStarIcon = '<span class="material-symbols-outlined" style="color:darkgray;">star</span>';
 
       // Generate the HTML for the star icons
       $starsHtml = '';
@@ -232,13 +234,13 @@
     <h1 class="title has-text-white has-text-centered">Rate and Review</h1>
     <div class="columns">
       <div class="column">
-        <h2 class="subtitle has-text-white"><?php echo $org['org_name']; ?></h2>
+        <h2 class="subtitle has-text-white"><?= $org['client_name']; ?></h2>
         <div class="card">
           <div class="card-content">
             <div class="content">
-              <p><?php echo $org['org_description']; ?></p>
+              <p><?= $org['client_bio']; ?></p>
               
-              <span class="tag is-info is-large"><?php echo $overall_rating . " " . $starsHtml; ?></span>
+              <span class="tag is-info is-large"><?= $overall_rating . " " . $starsHtml; ?></span>
             </div>
           </div>
         </div>
@@ -248,14 +250,16 @@
 
             <?php 
               $donation_sql = "SELECT * FROM `tbldonations` WHERE donor_id='$id' AND org_id='$org_id'";
-              $donation_result = mysqli_query($conn, $donation_sql);
+              //$donation_result = mysqli_query($conn, $donation_sql);
+              $donation_result = $db->query($donation_sql);
 
              if ($donation_result->num_rows > 0) {
                 // Donor has already donated, show rating button
                 
                 // checking if donor is already rate and comment!
-                $rateText = "SELECT * FROM `tbldonorrating` WHERE donor_id='$id' AND org_id='$org_id'";
-                $rateResult = mysqli_query($conn, $rateText);
+                $rateText = "SELECT * FROM `tblratings` WHERE donor_id='$id' AND org_id='$org_id'";
+                //$rateResult = mysqli_query($conn, $rateText);
+                $rateResult = $db->query($rateText);
 
                 $rateStars = 0;
                 $rateReview = "";
@@ -270,13 +274,13 @@
                   $editMode = true;
                 }
             ?>
-            <h3 class="subtitle"><?php echo $labels; ?> a Review</h3>
+            <h3 class="subtitle"><?= $labels; ?> a Review</h3>
             <div class="field">
               <label class="label">Rating</label>
               <div class="control">
-                <div class="select">
-                  <select name="selectedStars">
-                    <option value="<?php echo $rateStars; ?>"><?php echo $rateStars; ?> stars</option>
+                <!--<div class="select">
+                  <select name="stars">
+                    <option value=""> stars</option>
                     <option value="5">5 stars</option>
                     <option value="4">4 stars</option>
                     <option value="3">3 stars</option>
@@ -284,23 +288,31 @@
                     <option value="1">1 star</option>
                     <option value="0">0 star</option>
                   </select>
+                </div>-->
+                <div class="stars">
+                  <span class="star" data-value="1">&#9733;</span>
+                  <span class="star" data-value="2">&#9733;</span>
+                  <span class="star" data-value="3">&#9733;</span>
+                  <span class="star" data-value="4">&#9733;</span>
+                  <span class="star" data-value="5">&#9733;</span>
                 </div>
+                <input type="hidden" id="rating" name="stars" value="<?= $rateStars; ?>">
               </div>
             </div>
 
             <div class="field">
               <label class="label">Review</label>
               <div class="control">
-                <textarea class="textarea" placeholder="Write your review here" name="reviewText"><?php echo $rateReview; ?></textarea>
+                <textarea class="textarea" placeholder="Write your review here" name="review"><?= $rateReview; ?></textarea>
               </div>
             </div>
 
             <div class="field">
               <div class="control">
                 <?php if (!$editMode) { ?>
-                  <button class="button is-primary" type="submit" name="reviewSubmit">Submit Review</button>
+                  <button class="button is-primary" type="submit" name="review_submit">Submit Review</button>
                 <?php } else { ?>
-                  <button class="button is-primary" type="submit" name="reviewEditSubmit">Submit Edit Review</button>
+                  <button class="button is-primary" type="submit" name="review_edit">Submit Edit Review</button>
                 <?php } ?>
               </div>
             </div>
@@ -308,7 +320,7 @@
               } else {
             ?>
               <label class="label">Donate first to send a Rating & Review</label>
-              <button class="button is-primary" type="submit" name="donateSubmit">Donate Now!</button>
+              <button class="button is-primary" type="submit" name="donate_submit">Donate Now!</button>
             <?php
               }
             ?>
@@ -321,23 +333,26 @@
         <h3 class="subtitle has-text-white">Reviews</h3>
         <?php
 
-          $donorRatingText = "SELECT * FROM `tbldonorrating` WHERE org_id = $org_id AND donor_id = $id";
-          $resultRating = mysqli_query($conn, $donorRatingText);
+          $donorRatingText = "SELECT * FROM `tblratings` WHERE org_id = $org_id AND donor_id = $id";
+          //$resultRating = mysqli_query($conn, $donorRatingText);
+          $resultRating = $db->query($donorRatingText);
 
           // Check if the user has already submitted a rating and review
-          if ($resultRating && mysqli_num_rows($resultRating) > 0) {
+          if ($resultRating && $resultRating->num_rows > 0) {
             $row = mysqli_fetch_assoc($resultRating);
             $nameid = $row['donor_id'];
 
-            $selectName = "SELECT donor_name FROM `tbldonors` WHERE donor_id = $nameid";
-            $resultName = mysqli_query($conn, $selectName);
+            $selectName = "SELECT client_name FROM `tblclients` WHERE client_id = $nameid";
+            //$resultName = mysqli_query($conn, $selectName);
+            $resultName = $db->query($selectName);
             $name = '';
 
             $reviewId = $row['rating_id'];
 
-            if ($resultName && mysqli_num_rows($resultName) > 0) {
-              $nameRow = mysqli_fetch_assoc($resultName);
-              $name = $nameRow['donor_name'];
+            if ($resultName && $resultName->num_rows > 0) {
+              //$nameRow = mysqli_fetch_assoc($resultName);
+              $nameRow = $resultName->fetch_assoc();
+              $name = $nameRow['client_name'];
             }
 
             $stars = $row['rating'];
@@ -345,33 +360,33 @@
             $count = '';
 
             for ($i = 1; $i <= $stars; $i++) {
-              $count .= '<i class="fa fa-star"></i>';
+              $count .= '<span class="material-symbols-outlined" style="color:gold;">star</span>';
             }
 
             for ($i = $stars + 1; $i <= 5; $i++) {
-              $count .= '<i class="fa fa-star-o"></i>';
+              $count .= '<span class="material-symbols-outlined" style="color:darkgray;">star</span>';
             }
         ?>
           <article class="message">
             <div class="message-header">
               <p>Your Review</p>
-              <button onclick="confirmDelete(<?php echo $reviewId; ?>)" class="delete"></button>
+              <button onclick="confirmDelete(<?= $reviewId; ?>)" class="delete"></button>
             </div>
             <div class="message-body">
               <article class="media">
                 <figure class="media-left">
                   <p class="image is-64x64">
                     <?php
-                      $get_pic = $db->query("SELECT * FROM `tblimages` WHERE table_id = '$nameid' AND category = 'donor_icon' AND permit_type = 'icon'");
+                      $get_pic = $db->query("SELECT * FROM `tblimages` WHERE client_id = '$nameid' AND category = 'icon'");
                       if ($get_pic->num_rows > 0) {
                         $gett = $get_pic->fetch_assoc();
                         $imageData = $gett['image_data'];
                     ?>
-                      <img src="data:image;base64,<?php echo $imageData ?>" alt="Event Image">
+                      <img src="data:image;base64,<?= $imageData ?>" alt="Event Image">
                     <?php 
                       } else {
                     ?>
-                      <img src="https://bulma.io/images/placeholders/128x128.png" alt="<?php echo $name . ' logo';?>">
+                      <img src="https://bulma.io/images/placeholders/128x128.png" alt="<?= $name . ' logo';?>">
                     <?php 
                       }
                     ?>
@@ -380,9 +395,9 @@
                 <div class="media-content">
                   <div class="content">
                     <p>
-                      <strong><?php echo $name; ?></strong> <small><?php echo $stars . " / 5 " . $count; ?></small>
+                      <strong><?= $name; ?></strong> <small><?= $stars . " / 5 " . $count; ?></small>
                       <br>
-                      <?php echo $review; ?>
+                      <?= $review; ?>
                     </p>
                   </div>
                 </div>
@@ -392,20 +407,21 @@
         <?php 
           }
 
-          $donorRatingText = "SELECT * FROM `tbldonorrating` WHERE org_id = $org_id";
-          $resultRating = mysqli_query($conn, $donorRatingText);
+          $donorRatingText = "SELECT * FROM `tblratings` WHERE org_id = $org_id";
+          //$resultRating = mysqli_query($conn, $donorRatingText);
+          $resultRating = $db->query($donorRatingText);
 
             while ($row = $resultRating->fetch_assoc()) {
               $nameid = $row['donor_id'];
 
               if ($nameid !== $id) {
-              $selectName = "SELECT donor_name FROM `tbldonors` WHERE donor_id = $nameid";
-              $resultName = mysqli_query($conn, $selectName);
+              $selectName = "SELECT client_name FROM `tblclients` WHERE client_id = $nameid";
+              $resultName = $db->query($selectName);
               $name = '';
 
-              if ($resultName && mysqli_num_rows($resultName) > 0) {
-                $nameRow = mysqli_fetch_assoc($resultName);
-                $name = $nameRow['donor_name'];
+              if ($resultName && $resultName->num_rows > 0) {
+                $nameRow = $resultName->fetch_assoc();
+                $name = $nameRow['client_name'];
               }
 
               $stars = $row['rating'];
@@ -413,11 +429,11 @@
               $count = '';
 
               for ($i = 1; $i <= $stars; $i++) {
-                $count .= '<i class="fa fa-star"></i>';
+                $count .= '<span class="material-symbols-outlined" style="color:gold;">star</span>';
               }
   
               for ($i = $stars + 1; $i <= 5; $i++) {
-                $count .= '<i class="fa fa-star-o"></i>';
+                $count .= '<span class="material-symbols-outlined" style="color:darkgray;">star</span>';
               }
           ?>
         <div class="box">
@@ -430,9 +446,9 @@
             <div class="media-content">
               <div class="content">
                 <p>
-                  <strong><?php echo $name; ?></strong> <small><?php echo $stars . " / 5 " . $count; ?></small>
+                  <strong><?= $name; ?></strong> <small><?= $stars . " / 5 " . $count; ?></small>
                   <br>
-                  <?php echo $review; ?>
+                  <?= $review; ?>
                 </p>
               </div>
             </div>
@@ -447,6 +463,26 @@
     </div>
   </div>
 </section>
+
+  <script>
+        const stars = document.querySelectorAll('.star');
+        const ratingInput = document.getElementById('rating');
+
+        stars.forEach(star => {
+            star.addEventListener('click', () => {
+                const ratingValue = parseInt(star.getAttribute('data-value'));
+                ratingInput.value = ratingValue;
+
+                stars.forEach(s => {
+                    if (parseInt(s.getAttribute('data-value')) <= ratingValue) {
+                        s.classList.add('selected');
+                    } else {
+                        s.classList.remove('selected');
+                    }
+                });
+            });
+        });
+    </script>
 
   <!-- FOOTER -->
   <footer class="section">
@@ -481,20 +517,15 @@
     var formData = new FormData();
     formData.append('reviewId', reviewId);
 
-    axios.post('../lib/php/delete_review.php', formData)
+    axios.post('action/a.review.php', formData)
       .then(function (response) {
-        // Handle success response
         console.log(response);
-        // Display success message or perform any necessary actions
         swal('Success', 'Review deleted', 'success').then(function () {
-          // Redirect to the desired location
           window.location.href = 'rating.php?oid=<?php echo $org_id; ?>';
         });
       })
       .catch(function (error) {
-        // Handle error response
         console.error(error);
-        // Display error message or perform any necessary actions
         swal('Error', 'Failed to delete review', 'error');
       });
   }

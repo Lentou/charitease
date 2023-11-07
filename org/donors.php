@@ -1,3 +1,9 @@
+<?php if (!isset($_SESSION)) session_start(); 
+
+include '../lib/config.php';
+include '../lib/database.php';
+
+?>
 <!DOCTYPE html>
 <html>
 <head>
@@ -18,7 +24,6 @@
 
 <body>
   <?php
-    session_start();
     if (!isset($_SESSION['user']) && ($_SESSION['user'] != 'donor')) {
       header('Location: ../reg/login.php');
       exit;
@@ -119,26 +124,28 @@
     <hr>
     <div class="columns is-multiline">
       <?php 
-        // Connect to database
-        include '../lib/database.php';
 
-        $db = new Database("charitease");
-        $conn = $db->connect();
+        //$db = new Database("charitease");
+        $db = new Database();
+
+        //$conn = $db->connect();
 
         // Select all organizations from table
-        $sql = "SELECT * FROM tblorgs";
-        $result = mysqli_query($conn, $sql);
+        //$sql = "SELECT * FROM tblorgs";
+        //$result = mysqli_query($conn, $sql);
 
         $org_id = $_SESSION['id'];
-        $org_sql = "SELECT DISTINCT donor_id FROM `tblconvo` WHERE org_id='$org_id'";
-        $org_result = mysqli_query($conn, $org_sql);
+        //$org_sql = "SELECT DISTINCT donor_id FROM `tblconvo` WHERE org_id='$org_id'";
+        $org_sql = "SELECT DISTINCT receiver_id FROM `tblchats` WHERE sender_id='$org_id'";
+        //$org_result = mysqli_query($conn, $org_sql);
 
         // Store processed donor IDs
         $processedDonorIds = [];
 
         // Loop through donor IDs and create a card for each one
         while ($row = $org_result->fetch_assoc()) {
-          $donor_id = $row['donor_id'];
+          //$donor_id = $row['donor_id'];
+          $donor_id = $row['receiver_id'];
 
           // Skip if donor ID has already been processed
           if (in_array($donor_id, $processedDonorIds)) {
@@ -148,16 +155,25 @@
           // Add the donor ID to the processed list
           $processedDonorIds[] = $donor_id;
 
-          $userText = "SELECT * FROM `tbldonors` WHERE donor_id = $donor_id";
-          $userResult = mysqli_query($conn, $userText);
+          //$userText = "SELECT * FROM `tbldonors` WHERE donor_id = $donor_id";
+          $userText = "SELECT * FROM `tblclients` WHERE receiver_id = '$donor_id'";
+          //$userResult = mysqli_query($conn, $userText);
+          $userResult = $db->query($userText);
 
-          if (mysqli_num_rows($userResult) > 0) {
-            $user = mysqli_fetch_assoc($userResult);
+          if ($userResult->num_rows > 0) {
+            $user = $userResult->fetch_assoc();
           }
+          //if (mysqli_num_rows($userResult) > 0) {
+            //$user = mysqli_fetch_assoc($userResult);
+          //}
 
-          $notifQuery = "SELECT COUNT(*) AS notifCount FROM `tblconvo` WHERE is_read = 0 AND initiate_by = 'donor' AND donor_id = '$donor_id'";
-          $notifStmt = mysqli_query($conn, $notifQuery);
-          $notifRow = mysqli_fetch_assoc($notifStmt);
+          //$notifQuery = "SELECT COUNT(*) AS notifCount FROM `tblconvo` WHERE is_read = 0 AND initiate_by = 'donor' AND donor_id = '$donor_id'";
+          //$notifStmt = mysqli_query($conn, $notifQuery);
+          //$notifRow = mysqli_fetch_assoc($notifStmt);
+
+          $notifQuery = "SELECT COUNT(*) AS notifCount FROM `tblchats` WHERE is_read = 0 AND initiate_by = 'd' AND receiver_id = '$donor_id'";
+          $notifStmt = $db->query($notifQuery);
+          $notifRow = $notifStmt->fetch_assoc();
           $notifCount = $notifRow['notifCount'];
       ?>
 

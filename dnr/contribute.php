@@ -1,4 +1,9 @@
-<?php if (!isset($_SESSION)) session_start(); ?>
+<?php if (!isset($_SESSION)) session_start(); 
+
+include '../lib/config.php';
+include '../lib/database.php';
+
+?>
 <!DOCTYPE html>
 <html>
 <head>
@@ -118,11 +123,9 @@
     });
   </script>
 
-  <?php 
-    // Connect to database
-    include '../lib/database.php';
+  <?php
 
-    $db = new Database('charitease');
+    $db = new Database();
 		$conn = $db->connect();
 
     $org_id = $_GET['oid'];
@@ -135,46 +138,45 @@
     <div class="hero-body">
       <div class="container">
         <h1 class="title">Donate Charity Organization</h1>
-        <a href="timeline.php?oid=<?php echo $org_id; ?>" class="button is-pulled-left is-link is-small">Back</a>
+        <a href="timeline.php?oid=<?= $org_id; ?>" class="button is-pulled-left is-link is-small">Back</a>
       </div>
     </div>
   </section>
 
   <?php
 
-    $org = $db->query("SELECT * FROM `tblorgs` WHERE org_id = '$org_id'");
+    $getOrgText = "SELECT c.* FROM tblclients c JOIN tblusers u ON c.client_id = u.user_id WHERE c.client_id = '$org_id' AND u.account_type = 'c' AND c.is_approved = '1'";
+    $org = $db->query($getOrgText);
 
     if ($org->num_rows > 0) {
-      $orgs = mysqli_fetch_assoc($org);
+      $orgs = $org->fetch_assoc();
 
-      $org_name = $orgs['org_name'];
-      $org_type = $orgs['org_type'];
-      $org_address = $orgs['org_address'];
-      $org_desc = $orgs['org_description'];
+      $org_name = $orgs['client_name'];
+      $org_type = $orgs['client_type'];
+      $org_address = $orgs['client_address'];
+      $org_desc = $orgs['client_bio'];
     }
 
-    $event = $db->query("SELECT * FROM `tblorgtimeline` WHERE event_id = '$event_id' AND org_id = '$org_id'");
+    $event = $db->query("SELECT * FROM `tblevents` WHERE event_id = '$event_id' AND org_id = '$org_id' AND is_approved = '1'");
 
     if ($event->num_rows > 0) {
-      $events = mysqli_fetch_assoc($event);
+      $events = $event->fetch_assoc();
 
       $event_title = $events['event_title'];
       $event_type = $events['event_type'];
       $event_desc = $events['event_description'];
       $event_start_date = $events['event_start_date'];
       $event_end_date = $events['event_end_date'];
-      $current_inkind = $events['current_inkind'];
-      $target_inkind = $events['target_inkind'];
-      $current_funds = $events['current_funds'];
-      $target_funds = $events['target_funds'];
-    }
 
-    $donor = $db->query("SELECT * FROM `tbldonors` WHERE donor_id = '$donor_id'");
+      $collection = $db->query("SELECT * FROM `tblcollections` WHERE event_id = '$event_id'");
+      if ($collection) {
+        $collect = $collection->fetch_assoc();
+        $current_inkind = $collect['current_inkind'];
+        $target_inkind = $collect['target_inkind'];
+        $current_funds = $collect['current_funds'];
+        $target_funds = $collect['target_funds'];
+      }
 
-    if ($donor->num_rows > 0) {
-      $donors = mysqli_fetch_assoc($donor);
-
-      $donor_address = $donors['donor_address'];
     }
 
   ?>
@@ -219,7 +221,7 @@
           <div id="monetary-tab" class="content is-hidden">
             <div class="box">
               <h1 class="subtitle">Monetary Donation</h1>
-              <form action="../lib/php/donor_donate.php?oid=<?php echo $org_id; ?>&eid=<?php echo $event_id; ?>" method="POST">
+              <form action="action/donor_donate.php?oid=<?= $org_id; ?>&eid=<?= $event_id; ?>" method="POST">
 
                 <div class="field">
                   <label for="" class="label is-small">Payment Method</label>
@@ -322,7 +324,7 @@
           <div id="inkind-tab" class="content is-hidden">
             <div class="box">
               <h1 class="subtitle is-small">In-kind Donation</h1>
-              <form action="../lib/php/donor_donate.php?oid=<?php echo $org_id; ?>&eid=<?php echo $event_id; ?>" method="POST" enctype="multipart/form-data">
+              <form action="action/donor_donate.php?oid=<?= $org_id; ?>&eid=<?= $event_id; ?>" method="POST" enctype="multipart/form-data">
 
                 <div class="field is-horizontal">
                   <div class="field-body">
@@ -392,7 +394,7 @@
           <div id="both-tab" class="content is-hidden">
             <div class="box">
               <h1 class="subtitle is-small">Monetary & Inkind Donation</h1>
-              <form action="../lib/php/donor_donate.php?oid=<?php echo $org_id; ?>&eid=<?php echo $event_id; ?>" method="POST" enctype="multipart/form-data">
+              <form action="action/donor_donate.php?oid=<?= $org_id; ?>&eid=<?= $event_id; ?>" method="POST" enctype="multipart/form-data">
 
                 <div class="field">
                   <label for="" class="label is-small">Payment Method</label>
@@ -556,34 +558,34 @@
 
           <div id="timeline-tab" class="content">
             <div class="box">
-              <h1 class="title"><?php echo $event_title; ?></h1>
+              <h1 class="title"><?= $event_title; ?></h1>
               <p>
                 <strong>Description: </strong> <br>
-                <?php echo $event_desc; ?> <br> <br>
+                <?= $event_desc; ?> <br> <br>
               </p>
             <?php
               if ($event_start_date != NULL) {
             ?>
-              <p><strong>Start Date: </strong><?php echo $event_start_date; ?></p>
+              <p><strong>Start Date: </strong><?= $event_start_date; ?></p>
             <?php 
               }
               if ($event_end_date != NULL) {
             ?>
-              <p><strong>End Date: </strong><?php echo $event_end_date; ?></p>
+              <p><strong>End Date: </strong><?= $event_end_date; ?></p>
             <?php 
               }
               if ($target_inkind != 0) {
                 $percentI = ($current_inkind / $target_inkind) * 100;
             ?>
-              <label for="">Progress Donated Inkind: <strong><?php echo $percentI . "% (" . $current_inkind . " / " . $target_inkind . ")"; ?></strong></label>
-              <progress class="progress is-info" value="<?php echo intval($percentI); ?>" max="100"></progress>
+              <label for="">Progress Donated Inkind: <strong><?= $percentI . "% (" . $current_inkind . " / " . $target_inkind . ")"; ?></strong></label>
+              <progress class="progress is-info" value="<?= intval($percentI); ?>" max="100"></progress>
             <?php 
               }
               if ($target_funds != 0) {
                 $percentM = ($current_funds / $target_funds) * 100;
             ?>
-              <label for="">Progress Donated Monetary: <strong><?php echo $percentM . "% (₱" . $current_funds . " / ₱" . $target_funds . ")"; ?></strong></label>
-              <progress class="progress is-success" value="<?php echo intval($percentM); ?>" max="100"></progress>
+              <label for="">Progress Donated Monetary: <strong><?= $percentM . "% (₱" . $current_funds . " / ₱" . $target_funds . ")"; ?></strong></label>
+              <progress class="progress is-success" value="<?= intval($percentM); ?>" max="100"></progress>
             <?php 
               }
             ?>
@@ -591,12 +593,11 @@
             <hr>
             <div class="columns is-multiline">
               <?php
-                $image = $db->query("SELECT image_data, image_type FROM `tblimages` WHERE table_id = '$event_id' AND category = 'event_image'");
+                $image = $db->query("SELECT image_data FROM `tblimages` WHERE event_id = '$event_id' AND category = 'event_image'");
 
                 if ($image->num_rows > 0) {
-                  while ($image_row = mysqli_fetch_assoc($image)) {
+                  while ($image_row = $image->fetch_assoc()) {
                     $imageData = $image_row['image_data'];
-                    $imageType = $image_row['image_type'];
                     echo '<div class="column is-half">';
                     echo '<figure class="image is-square">';
                     echo '<img src="data:image;base64,' . $imageData . '" alt="Event Image">';
@@ -611,10 +612,10 @@
           <div id="aboutus-tab" class="content is-hidden">
             <div class="box">
               <h1 class="title">About Us</h1>
-              <p><strong>Charity Name: </strong> <?php echo $org_name; ?></p>
+              <p><strong>Charity Name: </strong> <?= $org_name; ?></p>
               <p>
                 <strong>Charity Description: </strong> <br>
-                <?php echo $org_desc; ?>
+                <?= $org_desc; ?>
               </p>
             </div>
           </div>

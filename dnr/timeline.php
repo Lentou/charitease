@@ -1,3 +1,9 @@
+<?php if (!isset($_SESSION)) session_start(); 
+
+include '../lib/config.php';
+include '../lib/database.php';
+
+?>
 <!DOCTYPE html>
 <html>
 <head>
@@ -18,7 +24,6 @@
 
 <body>
   <?php
-    session_start();
     if (!isset($_SESSION['user']) && ($_SESSION['user'] != 'donor')) {
       header('Location: ../reg/login.php');
       exit;
@@ -100,15 +105,11 @@
   </nav>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // Get all "navbar-burger" elements
       const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
-      // Add a click event on each of them
       $navbarBurgers.forEach( el => {
           el.addEventListener('click', () => {
-            // Get the target from the "data-target" attribute
             const target = el.dataset.target;
             const $target = document.getElementById(target);
-            // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
             el.classList.toggle('is-active');
             $target.classList.toggle('is-active');
           });
@@ -117,10 +118,8 @@
   </script>
 
   <?php 
-  
-    include '../lib/database.php';
 
-    $db = new Database('charitease');
+    $db = new Database();
     $conn = $db->connect();
 
     $user = $_SESSION['user'];
@@ -130,10 +129,13 @@
     $charity_posts = [];
     $charity_events = [];
 
-    $announce = $db->query("SELECT * FROM `tblorgtimeline` WHERE org_id = '$org_id' AND event_type = 'blog'");
-    $events = $db->query("SELECT * FROM `tblorgtimeline` WHERE org_id = '$org_id' AND event_type = 'event' ORDER BY event_start_date ASC");
+    $announce = $db->query("SELECT * FROM `tblevents` WHERE org_id = '$org_id' AND event_type = 'a' AND is_approved = '1'");
+    $events = $db->query("SELECT * FROM `tblevents` WHERE org_id = '$org_id' AND event_type = 'e' ORDER BY event_start_date ASC");
+    //$announce = $db->query("SELECT * FROM `tblorgtimeline` WHERE org_id = '$org_id' AND event_type = 'blog'");
+    //$events = $db->query("SELECT * FROM `tblorgtimeline` WHERE org_id = '$org_id' AND event_type = 'event' ORDER BY event_start_date ASC");
 
-    $orgs = $db->query("SELECT * FROM `tblorgs` WHERE org_id = '$org_id'");
+    //$orgs = $db->query("SELECT * FROM `tblorgs` WHERE org_id = '$org_id'");
+    $orgs = $db->query("SELECT * FROM `tblclients` WHERE client_id = '$org_id'");
     if ($orgs) {
       $org = $orgs->fetch_assoc();
     }
@@ -156,7 +158,7 @@
 		<div class="hero-body">
 			<div class="container">
 				<h1 class="title">Charity Post Timeline</h1>
-				<h2 class="subtitle"><strong>Charity Name: </strong><?php echo $org['org_name']; ?></h2>
+				<h2 class="subtitle"><strong>Charity Name: </strong><?= $org['client_name']; ?></h2>
         <a href="donate.php" class="button is-pulled-left is-link is-small">Back</a>
 			</div>
 		</div>
@@ -174,7 +176,7 @@
     <div id="content">
 
       <div id="content-tab1" class="tab-content">
-        <h1 class="h1">Charity Announcements of <strong><?php echo $org['org_name']; ?></strong></h1> <br>
+        <h1 class="h1">Charity Announcements of <strong><?= $org['client_name']; ?></strong></h1> <br>
         <div class="columns is-multiline">
         <?php
           foreach ($charity_posts as $posts) {
@@ -182,25 +184,24 @@
             $event_title = $posts['event_title'];
             $event_desc = $posts['event_description'];
             $event_type = $posts['event_type'];
-            $status = $posts['status'];
+            $status = $posts['event_status'];
 
-            $et = $event_type == "blog" ? "Announcement" : "Charity Event";
-            $tag = $event_type == "blog" ? "is-link" : "is-info";
+            $et = $event_type == "a" ? "Announcement" : "Charity Event";
+            $tag = $event_type == "a" ? "is-link" : "is-info";
         ?>
         <div class="column is-half">
           <div class="box">
-            <h1 class="title"><?php echo $event_title; ?></h1>
-            <p><strong>Post Type: </strong><span class="tag <?php echo $tag; ?>"><?php echo $et; ?></span></p>
-            <p><strong>Description: </strong> <br> <?php echo $event_desc; ?></p> <br>
+            <h1 class="title"><?= $event_title; ?></h1>
+            <p><strong>Post Type: </strong><span class="tag <?= $tag; ?>"><?= $et; ?></span></p>
+            <p><strong>Description: </strong> <br> <?= $event_desc; ?></p> <br>
             <div class="columns is-multiline">
               <?php
-                $imageG = "SELECT image_data, image_type FROM `tblimages` WHERE table_id = '$event_id' AND category = 'event_image'";
+                $imageG = "SELECT image_data FROM `tblimages` WHERE event_id = '$event_id' AND client_id = '$org_id' AND category = 'event_image'";
                 $imageR = mysqli_query($conn, $imageG);
 
-                if (mysqli_num_rows($imageR) > 0) {
-                  while ($imageRow = mysqli_fetch_assoc($imageR)) {
+                if ($imageR->num_rows > 0) {
+                  while ($imageRow = $imageR->fetch_assoc()) {
                     $imageData = $imageRow['image_data'];
-                    $imageType = $imageRow['image_type'];
 
                     echo '<div class="column is-half">';
                     echo '<figure class="image is-square">';
@@ -220,7 +221,7 @@
       </div>
 
       <div id="content-tab2" class="tab-content is-hidden">
-        <h1 class="h1">Charity Events of <strong><?php echo $org['org_name']; ?></strong></h1> <br>
+        <h1 class="h1">Charity Events of <strong><?= $org['client_name']; ?></strong></h1> <br>
         <div class="columns is-multiline">
         <?php
           foreach ($charity_events as $events) {
@@ -230,15 +231,26 @@
             $event_type = $events['event_type'];
             $event_start_date = $events['event_start_date'];
             $event_end_date = $events['event_end_date'];
-            $current_inkind = $events['current_inkind'];
-            $target_inkind = $events['target_inkind'];
-            $current_funds = $events['current_funds'];
-            $target_funds = $events['target_funds'];
-            $timestamp = $events['timestamp'];
-            $status = $events['status'];
 
-            $et = $event_type == "blog" ? "Announcement" : "Charity Event";
-            $tag = $event_type == "blog" ? "is-link" : "is-info";
+            $current_inkind = 0;
+            $target_inkind = 0;
+            $current_funds = 0;
+            $target_funds = 0;
+
+            $collection = $db->query("SELECT * FROM `tblcollections` WHERE event_id = '$event_id'");
+            if ($collection) {
+              $collect = $collection->fetch_assoc();
+              $current_inkind = $collect['current_inkind'];
+              $target_inkind = $collect['target_inkind'];
+              $current_funds = $collect['current_funds'];
+              $target_funds = $collect['target_funds'];
+            }
+            
+            $timestamp = $events['post_date'];
+            $status = $events['event_status'];
+
+            $et = $event_type == "a" ? "Announcement" : "Charity Event";
+            $tag = $event_type == "a" ? "is-link" : "is-info";
 
             $start = new DateTime($event_start_date);
             $end = new DateTime($event_end_date);
@@ -266,51 +278,50 @@
         <div class="column is-half">
           <div class="box">
             <h1 class="title"><?php echo $event_title; ?></h1>
-            <p><strong>Post Type: </strong><span class="tag <?php echo $tag; ?>"><?php echo $et; ?></span></p>
-            <p><strong>Description: </strong> <br> <?php echo $event_desc; ?></p> <br>
-            <p><strong>Status: </strong><span class="tag <?php echo $tag_st; ?>"><?php echo $st; ?></span></p> <br>
+            <p><strong>Post Type: </strong><span class="tag <?= $tag; ?>"><?= $et; ?></span></p>
+            <p><strong>Description: </strong> <br> <?= $event_desc; ?></p> <br>
+            <p><strong>Status: </strong><span class="tag <?= $tag_st; ?>"><?= $st; ?></span></p> <br>
             <?php 
-              if ($event_type == "event") {
+              if ($event_type == "e") {
                 if ($event_start_date != NULL) {
             ?>
-              <p><strong>Start Date: </strong><?php echo $startFormatted; ?></p>
+              <p><strong>Start Date: </strong><?= $startFormatted; ?></p>
             <?php 
                 }
                 if ($event_end_date != NULL) {
             ?>
-              <p><strong>End Date: </strong><?php echo $endFormatted; ?></p>
+              <p><strong>End Date: </strong><?= $endFormatted; ?></p>
             <?php 
                 }
                 if ($event_start_date != NULL && $event_end_date != NULL) {
             ?>
-            <p><strong>Duration: </strong><?php echo $daysCount; ?> day(s)</p>
+            <p><strong>Duration: </strong><?= $daysCount; ?> day(s)</p>
             <?php 
                 }
                 if ($target_inkind != 0 && $st == 'Ongoing' || $target_inkind != 0 && $st == 'Ended') {
                   $percentI = ($current_inkind / $target_inkind) * 100;
             ?>
-              <label for="">Progress Donated Inkind: <strong><?php echo $percentI . "% (" . $current_inkind . " / " . $target_inkind . ")"; ?></strong></label>
-              <progress class="progress is-info" value="<?php echo intval($percentI); ?>" max="100"></progress>
+              <label for="">Progress Donated Inkind: <strong><?= $percentI . "% (" . $current_inkind . " / " . $target_inkind . ")"; ?></strong></label>
+              <progress class="progress is-info" value="<?= intval($percentI); ?>" max="100"></progress>
             <?php 
                 }
                 if ($target_funds != 0 && $st == 'Ongoing' || $target_funds != 0 && $st == 'Ended') {
                   $percentM = ($current_funds / $target_funds) * 100;
             ?>
-              <label for="">Progress Donated Monetary: <strong><?php echo $percentM . "% (₱" . $current_funds . " / ₱" . $target_funds . ")"; ?></strong></label>
-              <progress class="progress is-success" value="<?php echo intval($percentM); ?>" max="100"></progress>
+              <label for="">Progress Donated Monetary: <strong><?= $percentM . "% (₱" . $current_funds . " / ₱" . $target_funds . ")"; ?></strong></label>
+              <progress class="progress is-success" value="<?= intval($percentM); ?>" max="100"></progress>
             <?php 
                 }
               }
             ?>
             <div class="columns is-multiline">
               <?php
-                $imageG = "SELECT image_data, image_type FROM `tblimages` WHERE table_id = '$event_id' AND category = 'event_image'";
-                $imageR = mysqli_query($conn, $imageG);
+                $imageG = "SELECT image_data FROM `tblimages` WHERE event_id = '$event_id' AND client_id = '$org_id' AND category = 'event_image'";
+                $imageR = $db->query($imageG);
 
-                if (mysqli_num_rows($imageR) > 0) {
-                  while ($imageRow = mysqli_fetch_assoc($imageR)) {
+                if ($imageR->num_rows > 0) {
+                  while ($imageRow = $imageR->fetch_assoc()) {
                     $imageData = $imageRow['image_data'];
-                    $imageType = $imageRow['image_type'];
 
                     echo '<div class="column is-half">';
                     echo '<figure class="image is-square">';
@@ -322,7 +333,7 @@
               ?>
             </div>
             <?php if (($target_funds != 0 || $target_inkind != 0) && $st == 'Ongoing') { ?>
-              <a href="contribute.php?oid=<?php echo $org_id; ?>&eid=<?php echo $event_id; ?>" class="button is-info">Donate Now!</a>
+              <a href="contribute.php?oid=<?= $org_id; ?>&eid=<?= $event_id; ?>" class="button is-info">Donate Now!</a>
             <?php } else echo "<br>"; ?>
           </div>
         </div>
@@ -333,10 +344,10 @@
       </div>
 
       <div id="content-tab3" class="tab-content is-hidden">
-        <h1 class="h1">Charity Registered Permits of <strong><?php echo $org['org_name']; ?></strong></h1> <br>
+        <h1 class="h1">Charity Registered Permits of <strong><?= $org['client_name']; ?></strong></h1> <br>
         <div class="columns is-multiline">
         <?php
-          $permits = $db->query("SELECT * FROM `tblimages` WHERE table_id = '$org_id' AND category = 'org_permit' AND permit_type = 'permit'");
+          $permits = $db->query("SELECT * FROM `tblimages` WHERE client_id = '$org_id' AND category = 'permit'");
 
           if ($permits->num_rows > 0) {
             while ($permit = $permits->fetch_assoc()) {
@@ -356,7 +367,7 @@
       <div id="content-tab4" class="tab-content is-hidden">
         <h1 class="h1"><strong>About Us</strong></h1>
         <div class="block">
-          <p><?php echo $org['org_description']; ?></p>
+          <p><?php echo $org['client_bio']; ?></p>
         </div>
       </div>
     </div>

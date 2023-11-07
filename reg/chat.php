@@ -170,7 +170,6 @@ include '../lib/database.php';
         <?php
             $id = $_SESSION['id'];
             $users = [];
-            $processedReceiverIds = [];
 
             $db = new Database();
 
@@ -185,10 +184,10 @@ include '../lib/database.php';
 
                     $users[] = $chatas;
 
-                    // Check if receiver_id has already been processed
-                    if (!in_array($receiver_id, $processedReceiverIds)) {
-                        // Retrieve client_name for the unique receiver_id
-                       $processedReceiverIds[] = $receiver_id;
+                    $processedReceiverIds[] = $receiver_id;
+
+                    if (in_array($receiver_id, $processedReceiverIds)) {
+                        continue;
                     }
                 }
             }
