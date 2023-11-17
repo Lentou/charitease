@@ -14,8 +14,8 @@ class email {
             $mail->isSMTP();
             $mail->Host = "smtp.gmail.com";
             $mail->SMTPAuth = true;
-            $mail->Username = "lentokunph@gmail.com";
-            $mail->Password = "vsbm spzi yyuu bvvi";
+            $mail->Username = "";
+            $mail->Password = "";
             $mail->SMTPSecure = "ssl";
             $mail->Port = 465;
 
