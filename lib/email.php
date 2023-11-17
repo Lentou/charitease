@@ -19,8 +19,7 @@ class email {
             $mail->SMTPSecure = "ssl";
             $mail->Port = 465;
 
-            $mail->setFrom('lentokunph@gmail.com', 'CharitEase');
-            //$mail->addAddress('baluyotjamesallen@gmail.com');
+            $mail->setFrom('charitease@gmail.com', 'CharitEase');
             $mail->addAddress($email);
 
             $mail->isHTML(true);
